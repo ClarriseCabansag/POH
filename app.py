@@ -251,7 +251,7 @@ def process_change_passcode():
 
     # Update the user's passcode directly
     user.passcode = new_passcode
-    db.session.commit()
+    db.session.commit() 
 
     return jsonify({"message": "Passcode changed successfully!", "success": True}), 200
 
@@ -259,5 +259,6 @@ def process_change_passcode():
 if __name__ == "__main__":
     with app.app():
         migrate_passwords()  # Call the migration function
-    app.run()
-    app.config['DEBUG'] = True
+  if _name_ == '_main_':
+    app.run(host='127.0.0.1', port=5432, debug=True)
+
