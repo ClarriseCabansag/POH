@@ -257,8 +257,7 @@ def process_change_passcode():
 
 
 if __name__ == "__main__":
-    with app.app():
+    with app.app_context():
         migrate_passwords()  # Call the migration function
-  if _name_ == '_main_':
-    app.run(host='127.0.0.1', port=5432, debug=True)
+    app.run(debug=True)
 
