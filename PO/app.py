@@ -177,6 +177,44 @@ def get_users():
         return jsonify(users_list), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500  # Return error if any exception occurs
+
+@app.route('/get_user/<int:id>', methods=['GET'])
+def get_user(id):
+    user = User.query.get(id)
+    if user:
+        return jsonify({
+            "id": user.id,
+            "full_name": user.full_name,
+            "email_address": user.email_address,
+            "username": user.username,
+            "password": user.password,
+            "user_title": user.user_title,
+            "user_level": user.user_level
+        }), 200
+    else:
+        return jsonify({"error": "User not found"}), 404
+
+
+@app.route('/update_user/<int:id>', methods=['POST'])
+def update_user(id):
+    user = User.query.get(id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Update user fields with form data
+    user.full_name = request.form.get('full_name')
+    user.email_address = request.form.get('email_address')
+    user.username = request.form.get('username')
+    user.password = request.form.get('password')  # Ensure this is handled securely in production
+    user.user_title = request.form.get('user_title')
+    user.user_level = request.form.get('user_level')
+
+    # Save changes
+    db.session.commit()
+    return jsonify({"success": True}), 200
+
+
+
 @app.route('/get_cashier_name', methods=['GET'])
 def get_cashier_name():
     if 'user_id' in session:
