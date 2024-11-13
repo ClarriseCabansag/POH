@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const addUserButton = document.getElementById("addUserButton");
   const saveUserButton = document.getElementById("saveUserButton");
+  const saveEditUserButton = document.getElementById("saveEditUserButton");
+  let currentUserId; // Track the current user being edited
 
   // Initialize DataTable
   const dataTable = new DataTable("#manage_users_table", {
@@ -23,31 +25,11 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       topStart: {
         buttons: [
-          {
-            extend: "copy",
-            className: "custom_button",
-            text: "Copy",
-          },
-          {
-            extend: "csv",
-            className: "custom_button",
-            text: "CSV",
-          },
-          {
-            extend: "excel",
-            className: "custom_button",
-            text: "Excel",
-          },
-          {
-            extend: "pdf",
-            className: "custom_button",
-            text: "PDF",
-          },
-          {
-            extend: "print",
-            className: "custom_button",
-            text: "Print",
-          },
+          { extend: "copy", className: "custom_button", text: "Copy" },
+          { extend: "csv", className: "custom_button", text: "CSV" },
+          { extend: "excel", className: "custom_button", text: "Excel" },
+          { extend: "pdf", className: "custom_button", text: "PDF" },
+          { extend: "print", className: "custom_button", text: "Print" },
         ],
       },
       topEnd: addUserButton,
@@ -70,32 +52,15 @@ document.addEventListener("DOMContentLoaded", () => {
       <td>${user.user_title}</td>
       <td>${user.user_level}</td>
       <td class="action_buttons">
-        <button class="btn btn-warning edit_button" data-bs-toggle="modal" data-bs-target="#edit_user_modal">
-          <i class="fa-solid fa-pen-to-square"></i> Edit
-        </button>
+ <button type="button" class="btn btn-primary" onclick="loadUserDataIntoEditModal({{ user.id }})">
+      Edit
+    </button>
+</td>
+
       </td>
     `;
     tableBody.appendChild(row);
-    dataTable.update();  // Refresh DataTable to include the new row
-  }
-
-  // Load users initially
-  loadUserTable();
-
-  function loadUserTable() {
-    fetch("/get_users")
-      .then(response => response.json())
-      .then(users => {
-        const tableBody = document.querySelector("#manage_users_table tbody");
-        tableBody.innerHTML = ""; // Clear existing rows
-
-        users.forEach(user => {
-          addUserToTable(user);
-        });
-
-        dataTable.update();  // Update DataTable after loading all users
-      })
-      .catch(error => console.error('Error loading users:', error));
+    dataTable.update();
   }
 
   // Save new user data and update the table
@@ -119,27 +84,8 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(response => response.json())
     .then(data => {
       if (data.message === "User added successfully!") {
-        // Show success message without user needing to click "OK"
-        const successAlert = document.createElement("div");
-        successAlert.classList.add("alert", "alert-success");
-        successAlert.textContent = "User added successfully!";
-        document.body.appendChild(successAlert);
-
-        // Hide the success message after 3 seconds
-        setTimeout(() => {
-          successAlert.remove();
-        }, 3000);
-
-        // Add user to the table without reloading
         addUserToTable(data.user);
-
-        // Clear the form fields
         document.getElementById("addUserForm").reset();
-
-        // Find the modal element and hide it
-        const addUserModalElement = document.getElementById("add_user_modal");
-        const addUserModal = new bootstrap.Modal(addUserModalElement);
-        addUserModal.hide();  // Programmatically close the modal
       } else {
         alert("Error adding user.");
       }
@@ -147,14 +93,78 @@ document.addEventListener("DOMContentLoaded", () => {
     .catch(error => console.error('Error:', error));
   });
 
-  // Automatically show the modal when the "Add User" button is clicked
-  addUserButton.addEventListener("click", () => {
-    // Reset the form when the "Add User" button is clicked
-    document.getElementById("addUserForm").reset();
+  // Load users initially
+  function loadUserTable() {
+    fetch("/get_users")
+      .then(response => response.json())
+      .then(users => {
+        const tableBody = document.querySelector("#manage_users_table tbody");
+        tableBody.innerHTML = "";
+        users.forEach(user => addUserToTable(user));
+        dataTable.update();
+      })
+      .catch(error => console.error('Error loading users:', error));
+  }
 
-    // Show the modal form
-    const addUserModalElement = document.getElementById("add_user_modal");
-    const addUserModal = new bootstrap.Modal(addUserModalElement);
-    addUserModal.show();
+  // Load user data into edit modal
+  document.addEventListener("click", event => {
+    if (event.target.closest(".edit_button")) {
+      currentUserId = event.target.closest(".edit_button").dataset.userId;
+      loadUserDataIntoEditModal(currentUserId);
+    }
   });
+
+  function loadUserDataIntoEditModal(userId) {
+  fetch(`/get_user/${userId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error("User not found");
+      }
+      return response.json();
+    })
+    .then(user => {
+      document.getElementById("edit_full_name").value = user.full_name || "";
+      document.getElementById("edit_email_address").value = user.email_address || "";
+      document.getElementById("edit_username").value = user.username || "";
+      document.getElementById("edit_password").value = user.password || "";
+      document.getElementById("edit_user_title").value = user.user_title || "";
+      document.getElementById("edit_user_level").value = user.user_level || "";
+      $('#editModal').modal('show');  // Show the modal after data loads
+    })
+    .catch(error => console.error("Error loading user data:", error));
+}
+
+
+
+  // Save changes for the edited user
+  saveEditUserButton.addEventListener("click", () => {
+    const updatedUserData = {
+      full_name: document.getElementById("edit_full_name").value,
+      email_address: document.getElementById("edit_email_address").value,
+      username: document.getElementById("edit_username").value,
+      password: document.getElementById("edit_password").value,
+      user_title: document.getElementById("edit_user_title").value,
+      user_level: document.getElementById("edit_user_level").value,
+    };
+
+    fetch(`/update_user/${currentUserId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(updatedUserData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.message === "User updated successfully!") {
+        loadUserTable();  // Refresh the table to show updated info
+      } else {
+        alert("Error updating user.");
+      }
+    })
+    .catch(error => console.error('Error updating user:', error));
+  });
+
+  // Load the users into the table on page load
+  loadUserTable();
 });

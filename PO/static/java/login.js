@@ -83,7 +83,7 @@ document.getElementById('login-form').addEventListener('submit', function(event)
         return response.json().then(data => {
             const role = data.role;
             if (role === 'manager') {
-                window.location.href = '/main';
+                window.location.href = '/user_management';
             } else if (role === 'cashier') {
                 window.location.href = '/sales_order'
             }
